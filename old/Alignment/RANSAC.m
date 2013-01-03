@@ -1,0 +1,51 @@
+     
+function [current_max, updated_inliers, q] = RANSAC(descriptor1,descriptor2,location1,location2,RES,INDICES)
+% RES is a matrix of closest neighbors
+%BEGIN RANSAC
+r = 10; % Threshold radius
+current_max =0;
+ for i = 1:size(RES,1)
+    t = 0;
+        for j = 1:size(RES,2)
+            if (RES(i,j) > t)
+            t = RES(i,j);
+            index = j;
+            end
+        end
+        INDICES(i,1) = index; %Stores the indices from the mathces. 
+  end
+for N = 1:882 %1:size(descriptor1,1) %N - The number of fitting-iterations
+% Compute the indices for each point in image 1 that should map to image 2 
+%BEGIN FITTING
+
+P1 = randi(size(descriptor1,1),1);
+P2 = randi(size(descriptor1,1),1);
+P3 = randi(size(descriptor1,1),1);
+% Solve the equations for the tranformation parameters q
+A = [location1(P1,1),location1(P1,2),0,0,1,0;0,0,location1(P1,1),location1(P1,2),0,1; location1(P2,1),location1(P2,2),0,0,1,0; 0,0,location1(P2,1),location1(P2,2),0,1; location1(P3,1),location1(P3,2),0,0,1,0; 0,0,location1(P3,1),location1(P3,2),0,1];
+b = [location2(INDICES(P1,1),1),location2(INDICES(P1,1),2),location2(INDICES(P2,1),1),location2(INDICES(P2,1),2),location2(INDICES(P3,1),1),location2(INDICES(P3,1),2)]';
+q = pinv(A)*b;
+
+num_inliers = 1;
+
+% Compute the inliers with the new transformation parameters
+    for i = 1:size(descriptor1,1)
+        B = [location1(i,1),location1(i,2),0,0,1,0; 0 0 location1(i,1),location1(i,2),0,1];
+        [points_n] = (B*q)'; %Compute the coordinates of where the point from image1 maps to image2
+        d_x = abs(location2(i,1) - points_n(1,1));
+        d_y = abs(location2(i,2) - points_n(1,2));
+        if(d_x < r && d_y < r) % Distance function as described in the question 
+            %Add the point to the set of inliers
+              inliers(num_inliers,:) = [location1(i,1),location1(i,2),location2(i,1),location2(i,2)];
+              num_inliers=num_inliers + 1;
+        end
+    end
+
+    if(num_inliers > current_max)
+           current_max = num_inliers;
+           updated_inliers = inliers(:,:); 
+    end
+ updated_inliers
+end % END RANSAC-FITTING
+ 
+ 
